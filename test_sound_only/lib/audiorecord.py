@@ -286,6 +286,7 @@ def start_recording_return_data(event_queue, recording_queue, error_queue, pcm, 
         recording_queue.put(cur_data)
     else:
         cur_data=stream.read(chunk)
+        recording_queue.put(cur_data)
 
     while event_queue.empty():
 #            if len(slid_win)>0:
@@ -295,6 +296,7 @@ def start_recording_return_data(event_queue, recording_queue, error_queue, pcm, 
             recording_queue.put(cur_data)
         else:
             cur_data=stream.read(chunk)
+            recording_queue.put(cur_data)
     else:
         stream.close()
         return
