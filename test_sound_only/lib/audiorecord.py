@@ -23,7 +23,6 @@ else:
 
 class AudioRecord:
     def __init__(self):
-        self.pcm = None
         self.event_queue = None
         self.recording_queue = None
 
@@ -32,8 +31,10 @@ class AudioRecord:
         self.params['chunk'] = 1024
         if uname == 'Linux':
             self.params['format'] = aa.PCM_FORMAT_S16_LE
+            self.pcm = None
         else:
             self.params['format'] = pa.paInt16
+            self.pcm = 0
         self.params['channels'] = 1
         self.params['rate'] = 44100
         self.params['threshold'] = None
@@ -43,13 +44,13 @@ class AudioRecord:
         self.params['outdir'] = None
 
     def test_config(self):
-        self.pcm = 'hw:CARD=usbaudio_2,DEV=0'
-
         self.params['chunk'] = 256
         if uname == 'Linux':
             self.params['format'] = aa.PCM_FORMAT_S16_LE
+            self.pcm = 'hw:CARD=usbaudio_2,DEV=0'
         else:
             self.params['format'] = pa.paInt16
+            self.pcm = 0
         self.params['channels'] = 1
         self.params['rate'] = 44100
         self.params['silence_limit'] = 0.5
@@ -83,7 +84,10 @@ class AudioRecord:
             os.makedirs(self.params['outdir'])
 
     def set_sound_card(self, attr):
-        self.pcm = "hw:CARD=%s,DEV=0" % attr
+        if uname == 'Linux':
+            self.pcm = "hw:CARD=%s,DEV=0" % attr
+        else:
+            self.pcm = int(attr)
 
     def list_sound_cards(self):
         return so.list_sound_cards()
@@ -102,9 +106,9 @@ class AudioRecord:
             stream.setperiodsize(self.params['chunk'])
             values = [math.sqrt(abs(audioop.max(stream.read()[1], 4)))for x in range(num_samples)]
         else:
-
             p = pa.PyAudio()
             stream = p.open(rate=self.params['rate'],
+                             input_device_index=self.pcm,
                              format=self.params['format'],
                              channels=self.params['channels'],
                              frames_per_buffer=self.params['chunk'],
@@ -177,13 +181,13 @@ def start_recording(queue, pcm, bird, channels, rate, format, chunk,
         stream.setformat(format)
         stream.setperiodsize(chunk)
     else:
-        pass
-        # p = pa.PyAudio()
-        # stream = p.open(rate=self.params['rate'],
-        #                  format=self.params['format'],
-        #                  channels=self.params['channels'],
-        #                  frames_per_buffer=self.params['chunk'],
-        #                  input=True)
+        p = pa.PyAudio()
+        stream = p.open(rate=rate,
+                         input_device_index=pcm,
+                         format=format,
+                         channels=channels,
+                         frames_per_buffer=chunk,
+                         input=True)
 
     print "listening..."
     audio2send = []
@@ -196,8 +200,7 @@ def start_recording(queue, pcm, bird, channels, rate, format, chunk,
     if uname == "Linux":
         cur_data=stream.read()[1]
     else:
-        pass
-        #cur_data=self.stream.read(self.params['chunk'])
+        cur_data=stream.read(chunk)
     slid_win.append(math.sqrt(abs(audioop.max(cur_data, 4))))
 
     while queue.empty():
@@ -206,8 +209,7 @@ def start_recording(queue, pcm, bird, channels, rate, format, chunk,
         if uname == "Linux":
             cur_data=stream.read()[1]
         else:
-            pass
-            #cur_data=self.stream.read(self.params['chunk'])
+            cur_data=stream.read(chunk)
 
         try:
             slid_win.append(math.sqrt(abs(audioop.max(cur_data, 4))))
@@ -265,13 +267,13 @@ def start_recording_return_data(event_queue, recording_queue, error_queue, pcm, 
             #print "recording2"
             #return
     else:
-        pass
-        # p = pa.PyAudio()
-        # stream = p.open(rate=self.params['rate'],
-        #                  format=self.params['format'],
-        #                  channels=self.params['channels'],
-        #                  frames_per_buffer=self.params['chunk'],
-        #                  input=True)
+        p = pa.PyAudio()
+        stream = p.open(rate=rate,
+                        input_device_index=pcm,
+                         format=format,
+                         channels=channels,
+                         frames_per_buffer=chunk,
+                         input=True)
 
     print "listening..."
     audio2send = []
@@ -283,8 +285,7 @@ def start_recording_return_data(event_queue, recording_queue, error_queue, pcm, 
         cur_data=stream.read()[1]
         recording_queue.put(cur_data)
     else:
-        pass
-        #cur_data=self.stream.read(self.params['chunk'])
+        cur_data=stream.read(chunk)
 
     while event_queue.empty():
 #            if len(slid_win)>0:
@@ -293,8 +294,7 @@ def start_recording_return_data(event_queue, recording_queue, error_queue, pcm, 
             cur_data=stream.read()[1]
             recording_queue.put(cur_data)
         else:
-            pass
-            #cur_data=self.stream.read(self.params['chunk'])
+            cur_data=stream.read(chunk)
     else:
         stream.close()
         return
