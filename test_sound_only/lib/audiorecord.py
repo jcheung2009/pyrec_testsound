@@ -104,7 +104,7 @@ class AudioRecord:
             stream.setrate(self.params['rate'])
             stream.setformat(self.params['format'])
             stream.setperiodsize(self.params['chunk'])
-            values = [math.sqrt(abs(audioop.max(stream.read()[1], 4)))for x in range(num_samples)]
+            values = [math.sqrt(abs(audioop.max(stream.read()[1], 2)))for x in range(num_samples)]
         else:
             p = pa.PyAudio()
             stream = p.open(rate=self.params['rate'],
@@ -113,7 +113,7 @@ class AudioRecord:
                              channels=self.params['channels'],
                              frames_per_buffer=self.params['chunk'],
                              input=True)
-            values = [math.sqrt(abs(audioop.max(stream.read(self.params['chunk']), 4)))for x in range(num_samples)]
+            values = [math.sqrt(abs(audioop.max(stream.read(self.params['chunk']), 2)))for x in range(num_samples)]
 
         #values = sorted(values, reverse=True)
         r = sum(values[:int(num_samples * 0.2)]) / int(num_samples * 0.2)
@@ -201,7 +201,7 @@ def start_recording(queue, pcm, bird, channels, rate, format, chunk,
         cur_data=stream.read()[1]
     else:
         cur_data=stream.read(chunk)
-    slid_win.append(math.sqrt(abs(audioop.max(cur_data, 4))))
+    slid_win.append(math.sqrt(abs(audioop.max(cur_data, 2))))
 
     while queue.empty():
         #if len(slid_win)>0:
@@ -212,7 +212,7 @@ def start_recording(queue, pcm, bird, channels, rate, format, chunk,
             cur_data=stream.read(chunk)
 
         try:
-            slid_win.append(math.sqrt(abs(audioop.max(cur_data, 4))))
+            slid_win.append(math.sqrt(abs(audioop.max(cur_data, 2))))
         except audioop.error:
             print "invalid number of blocks for threshold calculation, but continuing"
 
@@ -315,7 +315,7 @@ def save_audio(data, outdir, rate):
     return filname + '.wav'
 
 def get_audio_power(data):
-    return math.sqrt(abs(audioop.max(data, 4)))
+    return math.sqrt(abs(audioop.max(data, 2)))
 
 def main(argv):
     recorder = AudioRecord()
